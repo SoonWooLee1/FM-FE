@@ -1,20 +1,6 @@
 <template>
   <div id="fashion-community-page">
-    <header class="app-header">
-      <nav class="nav-left">
-        <img src="https://placehold.co/125x52/101828/FFF?text=LOGO" alt="Logo" class="logo" />
-        <a href="#">패션</a>
-        <a href="#">후기</a>
-        <a href="#">멘토링</a>
-        <a href="#">인플루언서</a>
-      </nav>
-      <div class="nav-right">
-        <input type="search" placeholder="검색..." class="search-bar" />
-        <img src="https://placehold.co/28x28" alt="Notifications" class="icon" />
-        <img src="https://placehold.co/32x32/E5E7EB/4A5565?text=나" alt="My Profile" class="profile-pic" />
-        <button class="logout-button">로그아웃</button>
-      </div>
-    </header>
+    <HeaderView />
 
     <section class="community-banner">
       <h1>FASHION COMMUNITY</h1>
@@ -147,21 +133,14 @@
       </aside>
     </main>
 
-    <footer class="app-footer">
-      <h2>FASHION MANAGER</h2>
-      <div class="footer-links">
-        <a href="#">소개</a>
-        <a href="#">커뮤니티</a>
-        <a href="#">가이드라인</a>
-        <a href="#">문의</a>
-      </div>
-      <p class="copyright">© 2025 Fashion Manager Project. All rights reserved.</p>
-    </footer>
+    <FooterView/>
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue';
+import HeaderView from '../../HeaderView.vue';
+import FooterView from '../../FooterView.vue';
 
 // 게시글 데이터
 const post = ref({
