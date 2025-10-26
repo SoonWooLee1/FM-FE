@@ -18,34 +18,27 @@
 
         <article v-else-if="postData" class="post-card">
           <div class="post-header">
-            <template v-if="postData.user">
-              <div class="avatar poster-avatar">{{ postData.user.avatar || '?' }}</div>
-              <div class="user-info">
-                <div class="user-name">
-                  <span>{{ postData.user.name || 'Unknown User' }}</span>
-                  <span v-if="postData.user.level" class="level-badge">Lv.{{ postData.user.level }}</span>
+            <div class="avatar poster-avatar">{{ '?' }}</div>
+            <div class="user-info">
+              <div class="user-name">
+                <span>{{ postData.memberName || 'Unknown User' }}</span>
                 </div>
-                <div class="post-time">{{ postData.time || '시간 정보 없음' }}</div>
-              </div>
-            </template>
-            <template v-else>
-              <div class="avatar poster-avatar">?</div>
-              <div class="user-info">
-                <div class="user-name">Unknown User</div>
-                <div class="post-time">시간 정보 없음</div>
-              </div>
-            </template>
+              <div class="post-time">{{ postData.time || '시간 정보 없음' }}</div>
+            </div>
             <div class="more-options">...</div>
           </div>
 
           <div class="post-body">
             <h2>{{ postData.title || '제목 없음' }}</h2>
-            <div class="tags" v-if="postData.tags && postData.tags.length > 0">
-              <span v-for="tag in postData.tags" :key="tag">{{ tag }}</span>
+            <div class="tags" v-if="postData.hashTags && postData.hashTags.length > 0">
+              <span v-for="tag in postData.hashTags" :key="tag.name">{{ tag.name }}</span>
             </div>
-            <div class="product-info" v-if="postData.product">
+            
+            <div class="product-info" v-if="postData.items && postData.items.length > 0">
               <div>착용 제품</div>
-              <strong>{{ postData.product }}</strong>
+              <strong v-for="item in postData.items" :key="item.name">
+                {{ item.name }}
+                </strong>
             </div>
 
             <img v-if="postData.imageUrl" :src="postData.imageUrl" alt="Post image" class="post-image" />
@@ -56,17 +49,16 @@
           </div>
 
           <div class="post-meta">
-            <span>조회 {{ postData.stats?.views || 0 }}</span>
-            <span>·</span>
+            <span>조회 {{ postData.views || 0 }}</span> <span>·</span>
             <span>댓글 {{ commentData?.length || 0 }}</span>
           </div>
 
           <div class="post-actions">
             <button class="action-button">
-              <span class="icon">❤️</span> 좋아요 {{ postData.stats?.likes || 0 }}
+              <span class="icon">❤️</span> 좋아요 {{ postData.good || 0 }}
             </button>
             <button class="action-button">
-              <span class="icon">💪</span> 힘내요 {{ postData.stats?.cheers || 0 }}
+              <span class="icon">💪</span> 힘내요 {{ postData.cheer || 0 }}
             </button>
             <button class="action-button">
               <span class="icon">🔗</span> 공유
@@ -80,17 +72,16 @@
             </div>
 
             <ul class="comment-list" v-if="commentData && commentData.length > 0">
-              <li v-for="comment in commentData" :key="comment.id" class="comment-item">
-                <div class="avatar comment-avatar">{{ comment.user?.avatar || '?' }}</div>
+              <li v-for="comment in commentData" :key="comment.num" class="comment-item">
+                <div class="avatar comment-avatar">{{ '?' }}</div>
                 <div class="comment-content">
                   <div class="comment-author-info">
-                    <strong>{{ comment.user?.name || 'Unknown User' }}</strong>
-                    <span v-if="comment.isAuthor" class="author-badge">작성자</span>
+                    <strong>{{ comment.memberName || 'Unknown User' }}</strong>
                     <span class="comment-time">{{ comment.time || '시간 정보 없음' }}</span>
                   </div>
-                  <p class="comment-text">{{ comment.text || '댓글 내용 없음' }}</p>
+                  <p class="comment-text">{{ comment.content || '댓글 내용 없음' }}</p>
                   <div class="comment-likes">
-                    <span class="icon">👍</span> {{ comment.likes || 0 }}
+                    <span class="icon">👍</span> {{ comment.good || 0 }}
                   </div>
                 </div>
                 <div class="more-options">...</div>
@@ -98,9 +89,14 @@
             </ul>
              <p v-else>아직 댓글이 없습니다.</p>
 
-            <form class="comment-form">
+            <form class="comment-form" @submit.prevent="handleCommentSubmit">
               <div class="avatar comment-avatar">나</div>
-              <input type="text" placeholder="댓글을 입력해주세요" class="comment-input" />
+              <input 
+                type="text" 
+                placeholder="댓글을 입력해주세요" 
+                class="comment-input"
+                v-model="newCommentText" 
+              />
               <button type="submit" class="comment-submit-button">등록</button>
             </form>
           </section>
@@ -149,137 +145,113 @@
 </template>
 
 <script setup>
-
 import { ref, onMounted } from 'vue';
-
-import { useRoute } from 'vue-router'; // 라우터 파라미터 사용 위해 추가
-
-import axios from 'axios'; // axios 추가
-
+import { useRoute } from 'vue-router';
+import axios from 'axios';
 import HeaderView from '../../HeaderView.vue';
-
 import FooterView from '../../FooterView.vue';
-
-
 
 const route = useRoute(); // 현재 라우트 정보 가져오기
 
+const postData = ref(null);
+const commentData = ref([]);
+const isLoading = ref(true);
+const error = ref(null);
 
-
-// --- 기존 하드코딩된 데이터 제거 ---
-
-// const post = ref({ ... });
-
-// const comments = ref([ ... ]);
-
-
-
-// +++ DB 데이터를 저장할 ref 변수 선언 +++
-
-const postData = ref(null); // 게시글 데이터 (초기값 null)
-
-const commentData = ref([]); // 댓글 데이터 (초기값 빈 배열)
-
-const isLoading = ref(true); // 로딩 상태
-
-const error = ref(null); // 에러 메시지
-
-
-
-// +++ API 호출 로직 +++
+// 새 댓글 입력을 위한 ref 및 postId를 script 전역에서 사용하기 위한 ref
+const newCommentText = ref('');
+const postId = ref(null); // onMounted 밖에서도 postId를 참조하기 위해 ref로 변경
 
 onMounted(async () => {
+  // 라우터 파라미터에서 :id 값을 가져옴
+  postId.value = route.params.id; 
 
-  // 실제로는 라우터 설정을 통해 postId를 가져옵니다. 예: /fashionpost/:id
-
-  // const postId = route.params.id;
-
-  const postId = 1; // 예시: 게시글 ID 1번 데이터 요청 (Postman에서 postNum=1 사용 가정)
-
-
-
-  try {
-
-    isLoading.value = true;
-
-    error.value = null;
-
-
-
-    // --- 게시글 데이터 가져오기 ---
-
-    // !!! 중요: '/api/manager-service/fashion-post/${postId}'는 가정된 엔드포인트입니다.
-
-    // 실제 백엔드 API 엔드포인트로 수정해야 합니다.
-
-    const postResponse = await axios.get(`/api/manager-service/posts/fashion/${postId}`);
-
-    postData.value = postResponse.data; // 가져온 데이터 저장
-
-
-
-    // --- 댓글 데이터 가져오기 (Postman 파일 참고) ---
-
-    // GET /manager-service/comments/getcomments?postType=fashion&postNum={postId}
-
-    const commentsResponse = await axios.get(`/api/manager-service/comments/getcomments`, {
-
-      params: {
-
-        postType: 'fashion',
-
-        postNum: postId
-
-      }
-
-    });
-
-    commentData.value = commentsResponse.data; // 가져온 데이터 저장
-
-
-
-  } catch (err) {
-
-    console.error("데이터 로딩 에러:", err);
-
-    error.value = "게시글 정보를 불러오는 데 실패했습니다.";
-
-    // postData.value = { user: {}, stats: {} }; // 에러 발생 시 기본 구조 할당 (선택 사항)
-
-  } finally {
-
+  // /fashionpost/ 로만 접속
+  if (!postId.value) {
+    error.value = "게시글 ID가 주소에 포함되지 않았습니다. (예: /fashionpost/1)";
     isLoading.value = false;
-
+    return;
   }
 
+  try {
+    isLoading.value = true;
+    error.value = null;
+
+    // --- 게시글 데이터 가져오기 ---
+    const postResponse = await axios.get(`/api/manager-service/posts/fashion/${postId.value}`);
+    postData.value = postResponse.data;
+
+    // --- 댓글 데이터 가져오기 ---
+    const commentsResponse = await axios.get(`/api/manager-service/comments/getcomments`, {
+      params: {
+        postType: 'fashion',
+        postNum: postId.value // .value로 ref 값에 접근
+      }
+    });
+    commentData.value = commentsResponse.data;
+
+  } catch (err) {
+    console.error("데이터 로딩 에러:", err);
+    error.value = "게시글 정보를 불러오는 데 실패했습니다.";
+  } finally {
+    isLoading.value = false;
+  }
 });
 
+// 댓글 등록 함수
+const handleCommentSubmit = async () => {
+  if (!newCommentText.value.trim()) {
+    alert("댓글 내용을 입력해주세요.");
+    return;
+  }
+
+  // 실제 구현 시에는 store나 세션 등에서 로그인한 사용자의 memberNum을 가져와야 함
+  const currentMemberNum = 4; // '이민준' (member_num = 4)
+  const currentMemberName = '이민준'; // 화면 즉시 표시를 위한 이름
+
+  try {
+    const newCommentPayload = {
+      content: newCommentText.value,
+      memberNum: currentMemberNum,
+      postType: 'fashion',
+      postNum: postId.value
+    };
+
+    // 백엔드 CommentController의 createComment 엔드포인트로 POST 요청
+    const response = await axios.post(`/api/manager-service/comments/createcomment`, newCommentPayload);
+
+    const newCommentFromServer = response.data;
+
+    // 백엔드 응답에 'memberName'이 없다면, 임시로 넣어줌
+    if (!newCommentFromServer.memberName) {
+      newCommentFromServer.memberName = currentMemberName;
+    }
+    
+    // 댓글 목록(commentData)에 새 댓글 추가하여 화면에 즉시 표시
+    commentData.value.push(newCommentFromServer);
+    
+    // 입력창 비우기
+    newCommentText.value = '';
+
+  } catch (err) {
+    console.error("댓글 등록 에러:", err);
+    alert("댓글 등록에 실패했습니다. (로그인 상태 확인 또는 백엔드 API 확인 필요)");
+  }
+};
 
 
-
-
-// (카테고리, 인기 멘토 데이터는 필요 시 유사하게 API 호출 로직 추가)
-
+// (카테고리, 인기 멘토 데이터는 나중에 API 호출 로직 추가 해야 함)
 const categories = ref([
-
   '전체', '코디 조언', '스타일링', '쇼핑 동행', '브랜드 추천', '트렌드 분석'
-
 ]);
-
 const popularMentors = ref([
-
   { name: '김패션', field: '코디 멘토링', likes: 234 },
-
   { name: '배민', field: '브랜딩', likes: 189 },
-
   { name: '트렌드분석이', field: '트렌드 분석', likes: 156 },
-
 ]);
-
 </script>
 
 <style scoped>
-/* 기존 스타일 유지 */
 :root {
   --primary-color: #155DFC;
   --text-primary: #101828;
@@ -718,5 +690,4 @@ const popularMentors = ref([
 .state.error {
   color: #e53935; /* 빨간색 에러 메시지 */
 }
-
 </style>
