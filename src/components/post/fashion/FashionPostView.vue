@@ -37,31 +37,10 @@
               <div>착용 제품</div>
               <strong v-for="item in postData.items" :key="item.name">{{ item.name }}</strong>
             </div>
-            
-            <img 
-              v-if="mainImages.length > 0" 
-              :src="mainImages[activeMainIndex]" 
-              @error="onImgError" 
-              alt="메인 이미지"
-              class="post-image"
-            >
-            <img 
-              v-else-if="!postData.imageUrl" 
-              :src="`/images/fashionpost${postId}.jpg`" 
-              alt="Knit Outfit" 
-              class="post-image" 
-            />
-            <img 
-              v-else-if="postData.imageUrl" 
-              :src="postData.imageUrl" 
-              alt="Post image" 
-              class="post-image" 
-            />
-
+            <img :src="mainImages[activeMainIndex]" @error="onImgError" alt="메인 이미지">
             <div v-for="(imgSrc, index) in itemImages" :key="index">
-              <img :src="imgSrc" @error="onImgError" alt="아이템 이미지" class="post-image">
+              <img :src="imgSrc" @error="onImgError" alt="아이템 이미지">
             </div>
-
             <div class="post-content-text" v-html="postData.content || '내용 없음'"></div>
           </div>
 
@@ -152,16 +131,16 @@
 
 <script setup>
 import { ref, onMounted, reactive } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router'; // useRouter 추가
 import axios from 'axios';
 import HeaderView from '../../HeaderView.vue';
 import FooterView from '../../FooterView.vue';
 
 const route = useRoute();
-const router = useRouter();
+const router = useRouter(); // router 인스턴스 가져오기
 
 const postData = ref(null);
-const postHashtags = ref([]);
+const postHashtags = ref([]) // <--- hashtags 저장할 ref 추가
 const commentData = ref([]);
 const isLoading = ref(true);
 const error = ref(null);
@@ -172,74 +151,89 @@ const postId = ref(null);
 const api = axios.create({
   baseURL: '/api',
   withCredentials: true,
-});
+})
 api.interceptors.request.use((config) => {
-  const token = sessionStorage.getItem('token');
+  const token = sessionStorage.getItem('token')
   if (token) {
-    config.headers = config.headers || {};
-    config.headers.Authorization = `Bearer ${token}`;
+    config.headers = config.headers || {}
+    config.headers.Authorization = `Bearer ${token}`
   }
-  return config;
-});
+  return config
+})
 api.interceptors.response.use(
   (res) => res,
   (err) => {
     if (err?.response?.status === 401) {
-      alert('세션이 만료되었거나 권한이 없습니다. 다시 로그인해 주세요.');
-      router.push('/');
+      alert('세션이 만료되었거나 권한이 없습니다. 다시 로그인해 주세요.')
+      router.push('/')
     }
-    return Promise.reject(err);
+    return Promise.reject(err)
   }
-);
+)
 
-// --- 임시 로그인 정보 ---
-const currentMemberNum = ref(4);
-const currentMemberName = ref('이민준');
-// ------------------------
+// --- [수정] 실제 로그인 구현 후 이 부분은 수정되어야 합니다 ---
+// (예: sessionStorage에서 토큰을 디코딩하여 사용자 번호/이름 가져오기)
+const currentMemberNum = ref(4); // 임시: 현재 로그인된 사용자 번호
+const currentMemberName = ref('이민준'); // 임시: 현재 로그인된 사용자 이름
+// ----------------------------------------------------
 
 const FASHION_POST_CATEGORY = 1;
 
 const toPublicImageSrc = (path, name) => {
-  if (!name) return null;
-  if (/^https?:\/\//i.test(name)) return name;
+  if (!name) return null
+  if (/^https?:\/\//i.test(name)) return name // 혹시 절대 URL이면 통과
 
+  // 1. path에 'public' 디렉토리 표시가 있는지 확인합니다.
   if (path && /public[\\/]/i.test(path)) {
-    const afterPublic = path.split(/public[\\/]/i).pop() || '';
-    const base = afterPublic.replaceAll('\\', '/').replace(/^\/+/, '');
-    return (`/${base}/${name}`).replace(/\/+/g, '/');
+    // 2. 'public' 이후의 경로만 추출합니다. (예: images\fashion)
+    const afterPublic = path.split(/public[\\/]/i).pop() || ''
+    // 3. 윈도우 경로 구분자(\)를 웹 URL 구분자(/)로 변경하고, 맨 앞 슬래시를 제거합니다. (예: images/fashion)
+    const base = afterPublic.replaceAll('\\', '/').replace(/^\/+/, '')
+    // 4. 최종 웹 경로를 만듭니다. (예: /images/fashion/1234-abcd.png)
+    //    중복 슬래시(//)는 하나로 정리합니다.
+    return (`/${base}/${name}`).replace(/\/+/g, '/')
   }
-  if (path?.startsWith('/')) {
-    return (`${path}/${name}`).replace(/\/+/g, '/');
-  }
-  return (`/images/fashion/${name}`).replace(/\/+/g, '/');
-};
 
-const mainImages = ref([]);
-const itemImages = ref([]);
-const activeMainIndex = ref(0);
+  // 5. 만약 path가 이미 /images/... 같은 웹 경로 형태면 그대로 사용합니다.
+  if (path?.startsWith('/')) {
+    return (`${path}/${name}`).replace(/\/+/g, '/')
+  }
+
+  // 6. 위 조건들에 맞지 않으면 기본 경로를 사용합니다. (이 부분은 프로젝트 구조에 맞게 조정 필요)
+  //    예) /images/fashion/1234-abcd.png
+  return (`/images/fashion/${name}`).replace(/\/+/g, '/')
+}
+
+const mainImages = ref([])
+const itemImages = ref([])
+const activeMainIndex = ref(0)
 
 const onImgError = (e) => {
-  if (e?.target) e.target.src = '/images/fashionpost1.jpg';
-};
+  if (e?.target) e.target.src = '/images/fashionpost1.jpg'
+}
 
 const buildImagesFromPhotos = (photos = []) => {
   const byPost = photos
-    .filter(p => Number(p?.photoCategoryNum) === 1)
-    .sort((a, b) => (a?.num ?? 0) - (b?.num ?? 0));
+    .filter(p => Number(p?.photoCategoryNum) === 1) // 카테고리 1번은 메인 이미지로 가정
+    .sort((a, b) => (a?.num ?? 0) - (b?.num ?? 0))
   const byItem = photos
-    .filter(p => Number(p?.photoCategoryNum) !== 1)
-    .sort((a, b) => (a?.num ?? 0) - (b?.num ?? 0));
+    .filter(p => Number(p?.photoCategoryNum) !== 1) // 그 외는 아이템 이미지로 가정
+    .sort((a, b) => (a?.num ?? 0) - (b?.num ?? 0))
 
+  // 각 사진 정보(p)에서 path와 name을 꺼내 toPublicImageSrc 함수로 URL 변환
   mainImages.value = byPost
     .map(p => toPublicImageSrc(p?.path, p?.name))
-    .filter(Boolean);
-  
+    .filter(Boolean) // null 값 제거
+
   itemImages.value = byItem
     .map(p => toPublicImageSrc(p?.path, p?.name))
-    .filter(Boolean);
+    .filter(Boolean) // null 값 제거
 
-  activeMainIndex.value = 0;
-};
+  activeMainIndex.value = 0 // 첫 번째 메인 이미지를 활성화
+}
+
+
+
 
 const postReaction = reactive({
   isLiked: false,
@@ -249,6 +243,20 @@ const postReaction = reactive({
 });
 
 onMounted(async () => {
+  postId.value = route.params.id
+  if (!postId.value) {
+    error.value = '게시글 ID가 주소에 포함되지 않았습니다.'
+    isLoading.value = false
+    return
+  }
+
+  const postRes = await api.get(`/manager-service/posts/fashion/${postId.value}`)
+  postData.value = postRes.data
+
+  postHashtags.value = Array.isArray(postData.value?.hashtags) ? postData.value.hashtags : []
+
+  buildImagesFromPhotos(postData.value?.photos || [])
+
   postId.value = route.params.id;
   if (!postId.value) {
     error.value = "게시글 ID가 주소에 포함되지 않았습니다.";
@@ -265,15 +273,10 @@ const fetchPostAndComments = async () => {
   try {
     const postResponse = await api.get(`/manager-service/posts/fashion/${postId.value}`);
     postData.value = postResponse.data;
-    postHashtags.value = Array.isArray(postData.value?.hashtags) ? postData.value.hashtags : [];
 
-    if (postData.value?.photos) {
-      buildImagesFromPhotos(postData.value.photos);
-    } else if (postData.value?.imageUrl) {
-      mainImages.value = [postData.value.imageUrl];
-    }
+    buildImagesFromPhotos(postData.value?.photos || [])
 
-    const commentsResponse = await api.get(`/manager-service/comments/getcomments`, {
+    const commentsResponse = await axios.get(`/api/manager-service/comments/getcomments`, {
       params: { postType: 'fashion', postNum: postId.value }
     });
     commentData.value = commentsResponse.data.map(c => ({ ...c, userReaction: null, isReacting: false }));
@@ -289,15 +292,13 @@ const fetchPostAndComments = async () => {
   }
 };
 
-// [수정] togglePostReaction: 'api.post' 메서드 사용 (사용자 요청)
 const togglePostReaction = async (reactionType) => {
   if (postReaction.isLiking || postReaction.isCheering) return;
   const isLikeAction = reactionType === 'good';
   if (isLikeAction) postReaction.isLiking = true; else postReaction.isCheering = true;
   const payload = { memberNum: currentMemberNum.value, postCategoryNum: FASHION_POST_CATEGORY, reactionType };
   try {
-    // 'api.put' -> 'api.post'로 변경
-    await api.post(`/api/manager-service/posts/fashion/react/${postId.value}`, payload);
+    await axios.post(`/api/manager-service/posts/fashion/react/${postId.value}`, payload);
     if (isLikeAction) {
       const wasLiked = postReaction.isLiked;
       postReaction.isLiked = !wasLiked;
@@ -322,7 +323,7 @@ const toggleCommentReaction = async (comment, reactionType) => {
   comment.isReacting = true;
   const payload = { memberNum: currentMemberNum.value, reactionType };
   try {
-    await api.post(`/api/manager-service/comments/${comment.num}/react`, payload);
+    await axios.post(`/api/manager-service/comments/${comment.num}/react`, payload);
     const currentReaction = comment.userReaction;
     if (reactionType === 'good') {
       if (currentReaction === 'good') { comment.userReaction = null; comment.good -= 1; }
@@ -339,7 +340,7 @@ const handleCommentSubmit = async () => {
   if (!newCommentText.value.trim()) { alert("댓글 내용을 입력해주세요."); return; }
   try {
     const payload = { content: newCommentText.value, memberNum: currentMemberNum.value, postType: 'fashion', postNum: postId.value };
-    const response = await api.post(`/api/manager-service/comments/createcomment`, payload);
+    const response = await axios.post(`/api/manager-service/comments/createcomment`, payload);
     const newComment = response.data;
     if (!newComment.memberName) { newComment.memberName = currentMemberName.value; }
     commentData.value.push({ ...newComment, userReaction: null, isReacting: false });
@@ -347,8 +348,9 @@ const handleCommentSubmit = async () => {
   } catch (err) { console.error("댓글 등록 에러:", err); alert("댓글 등록 실패"); }
 };
 
-// --- 수정/삭제 함수 ---
+// --- [수정] 수정/삭제 함수 추가 ---
 const editPost = () => {
+  // 패션 게시판 수정 라우터 이름 확인 필요 (라우터에 'editfashionpost'로 추가 가정)
   // router.push({ name: 'editfashionpost', params: { id: postId.value } });
   alert('패션 게시글 수정 기능 구현 필요 (라우터 설정 확인)');
 };
@@ -356,7 +358,7 @@ const editPost = () => {
 const deletePost = async () => {
   if (confirm('정말로 이 게시글을 삭제하시겠습니까?')) {
     try {
-      await api.delete(`/api/manager-service/posts/fashion/${postId.value}`);
+      await axios.delete(`/api/manager-service/posts/fashion/${postId.value}`);
       alert('게시글이 삭제되었습니다.');
       router.push({ name: 'fashionboardview' });
     } catch (err) { console.error("게시글 삭제 에러:", err); alert('게시글 삭제 실패'); }
@@ -366,16 +368,19 @@ const deletePost = async () => {
 const editComment = (comment) => {
   const newContent = prompt('댓글 수정:', comment.content);
   if (newContent !== null && newContent.trim() !== comment.content) {
-    // TODO: 댓글 수정 API 호출 (api.put 사용)
-    // 예시: api.put(`/api/manager-service/comments/${comment.num}`, { content: newContent }).then(...)
+    // TODO: 댓글 수정 API 호출 (PUT /api/manager-service/comments/{commentNum})
+    // 예시: axios.put(`/api/manager-service/comments/${comment.num}`, { content: newContent }).then(...)
     alert(`댓글 수정 API 호출: ${comment.num}, 내용: ${newContent}`);
+    // 성공 시
+    // const index = commentData.value.findIndex(c => c.num === comment.num);
+    // if (index !== -1) { commentData.value[index].content = newContent; }
   }
 };
 
 const deleteComment = async (commentNum) => {
   if (confirm('정말로 이 댓글을 삭제하시겠습니까?')) {
     try {
-      await api.delete(`/api/manager-service/comments/${commentNum}`);
+      await axios.delete(`/api/manager-service/comments/${commentNum}`);
       alert('댓글이 삭제되었습니다.');
       commentData.value = commentData.value.filter(c => c.num !== commentNum);
     } catch (err) { console.error("댓글 삭제 에러:", err); alert('댓글 삭제 실패'); }
@@ -383,6 +388,7 @@ const deleteComment = async (commentNum) => {
 };
 // ----------------------------
 
+const categories = ref(['전체', '코디 조언', '스타일링', '쇼핑 동행', '브랜드 추천', '트렌드 분석']);
 const popularMentors = ref([
   { name: '김패션', field: '코디 멘토링', likes: 234 },
   { name: '배민', field: '브랜딩', likes: 189 },
@@ -419,7 +425,7 @@ const popularMentors = ref([
   right: 0;
 }
 
-/* 기존 스타일 */
+/* 기존 스타일 복사 */
 :root {
   --primary-color: #155DFC;
   --text-primary: #101828;
