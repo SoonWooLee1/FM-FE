@@ -10,36 +10,30 @@
       <div class="post-editor-header">
         <div class="post-editor-title">멘토링 게시글 작성</div>
       </div>
-      {/* ✅ @submit.prevent 핸들러 추가 */}
       <form @submit.prevent="onSubmit">
         <div class="form-group title-group">
           <label class="form-label" for="title">제목 <span class="req">*</span></label>
           <div class="input-wrapper title-input-wrapper">
-             {/* ✅ v-model 추가 */}
              <input type="text" id="title" class="form-input title-input" placeholder="제목을 입력하세요" v-model="form.title" required>
           </div>
         </div>
         <div class="form-group content-group">
           <label class="form-label" for="content">내용 <span class="req">*</span></label>
           <div class="textarea-wrapper content-textarea-wrapper">
-             {/* ✅ v-model 추가 */}
              <textarea id="content" class="form-textarea content-textarea" placeholder="내용을 입력하세요" v-model="form.content" required></textarea>
           </div>
         </div>
-        {/* 해시태그는 현재 API에 없으므로 일단 UI만 유지 */}
         <div class="form-group hashtag-group">
           <label class="form-label">해시태그</label>
           <div class="hashtag-input-group">
             <div class="input-wrapper hashtag-input-wrapper">
                <input type="text" class="form-input hashtag-input" placeholder="해시태그 입력 (Enter로 추가)">
             </div>
-            <button type="button" class="hashtag-add-button">추가</button> {/* submit 방지 위해 type="button" */}
+            <button type="button" class="hashtag-add-button">추가</button>
           </div>
         </div>
         <div class="button-group">
-           {/* ✅ 취소 버튼 type="button" 및 @click 핸들러 추가 */}
           <button type="button" class="form-button cancel-button" @click="goBoard">취소</button>
-          {/* ✅ 작성 완료 버튼 type="submit" */}
           <button type="submit" class="form-button submit-button">작성 완료</button>
         </div>
       </form>
@@ -223,7 +217,7 @@ HeaderView, FooterView {
   /* left/top/position 제거 -> flex item */
   flex-shrink: 0; /* 배너 높이 고정 */
   overflow: hidden;
-  background-image: url('https://placehold.co/1440x177'); /* Placeholder */
+  background-image: url('images/FMbanner.jpg'); /* Placeholder */
   background-size: cover;
   background-position: center;
   position: relative; /* 내부 요소 absolute 배치를 위해 */

@@ -395,7 +395,7 @@ onMounted(async () => {
   width: calc(100% + 114px); /* 양쪽 패딩만큼 확장 */
   height: 200px;
   margin: 0 -57px 24px -57px;
-  background: url('/images/MentoringBoardBanner.png') center/cover no-repeat; /* 기존 배너 이미지 사용 */
+  background: url('/images/FMbanner.jpg') center/cover no-repeat; /* 기존 배너 이미지 사용 */
   position: relative;
   display: flex;
   align-items: center;

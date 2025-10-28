@@ -23,7 +23,6 @@
               </div>
             </div>
             <div class="post-edit-actions" v-if="postData.memberNum === currentMemberNum">
-              <button @click="editPost">수정</button>
               <button @click="deletePost">삭제</button>
             </div>
           </div>
@@ -41,7 +40,8 @@
             <div v-for="(imgSrc, index) in itemImages" :key="index">
               <img :src="imgSrc" @error="onImgError" alt="아이템 이미지">
             </div>
-            <div class="post-content-text" v-html="postData.content || '내용 없음'"></div>
+            <div class="post-content-text" v-html="postData.content || ' '"></div>
+            <button class="report-button post-report-button" @click="reportPost(postId)">🚨 게시글 신고</button>
           </div>
 
           <div class="post-meta">
@@ -78,8 +78,8 @@
                     </div>
                   </div>
                 </div>
-                <div class="comment-edit-actions" v-if="comment.memberNum === currentMemberNum">
-                  <button @click="editComment(comment)">수정</button>
+                <div class="comment-edit-actions">
+                  <button @click="reportComment(comment.num)">🚨 신고</button>
                   <button @click="deleteComment(comment.num)">삭제</button>
                 </div>
               </li>
@@ -101,17 +101,17 @@
         <div class="widget category-widget">
           <h3>카테고리</h3>
           <div class="category-list">
-            {/* postHashtags 데이터는 onMounted에서 postData.hashtags로 채워집니다. */}
+
             <button v-for="tag in postHashtags" :key="tag.num || tag.name">{{ tag.name }}</button>
           </div>
         </div>
         <div class="widget mentors-widget">
           <h3><span class="icon">🏆</span> 인기 멘토</h3>
           <ul class="mentor-list">
-            {/* key를 고유 ID(num)로 변경 */}
+
             <li v-for="mentor in popularMentors" :key="mentor.num || mentor.name">
               <div class="mentor-info">
-                {/* @click 핸들러와 스타일 바인딩 추가 */}
+
                 <strong @click="goToMentorPage(mentor.num)" :style="{ cursor: mentor.num ? 'pointer' : 'default' }">
                   {{ mentor.name }}
                 </strong>
@@ -126,7 +126,7 @@
         <div class="widget cta-widget">
           <h3>멘토로 활동하기</h3>
           <p>패션 전문가와 함께하세요</p>
-          {/* @click 핸들러 추가 */}
+
           <button class="cta-button" @click="goToApplyPage">신청하기</button>
         </div>
       </aside>
@@ -136,7 +136,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, reactive } from 'vue';
+import { ref, onMounted, reactive, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router'; // useRouter 추가
 import axios from 'axios';
 import HeaderView from '../../HeaderView.vue';
@@ -144,6 +144,33 @@ import FooterView from '../../FooterView.vue';
 
 const route = useRoute();
 const router = useRouter(); // router 인스턴스 가져오기
+
+const token = sessionStorage.getItem('token')
+
+const authorMemberNum = computed(() => Number(postData?.value?.memberNum));
+const myMemberNum = computed(() => Number(currentMemberNum?.value));
+
+const isAuthor = computed(() => {
+  return Number.isFinite(myMemberNum.value) &&
+         Number.isFinite(authorMemberNum.value) &&
+         myMemberNum.value === authorMemberNum.value;
+});
+
+// 게시글 신고 페이지 이동
+const reportPost = (postNum) => {
+    router.push({
+    name: 'reportFashionPost',
+    params: { num: postNum.value }
+  });
+};
+
+// 댓글 신고 페이지 이동
+const reportComment = (commentNum) => {
+  router.push({
+    name: 'reportComment',
+    params: { num: commentNum.value }
+  });
+};
 
 // ▼▼▼▼▼ 라우팅 함수 추가 ▼▼▼▼▼
 /**
@@ -202,8 +229,8 @@ api.interceptors.response.use(
 
 // --- [수정] 실제 로그인 구현 후 이 부분은 수정되어야 합니다 ---
 // (예: sessionStorage에서 토큰을 디코딩하여 사용자 번호/이름 가져오기)
-const currentMemberNum = ref(4); // 임시: 현재 로그인된 사용자 번호
-const currentMemberName = ref('이민준'); // 임시: 현재 로그인된 사용자 이름
+let currentMemberNum = ref(null); // 임시: 현재 로그인된 사용자 번호
+let currentMemberName = ref('null'); // 임시: 현재 로그인된 사용자 이름
 // ----------------------------------------------------
 
 const FASHION_POST_CATEGORY = 1;
@@ -272,6 +299,20 @@ const postReaction = reactive({
 });
 
 onMounted(async () => {
+  axios.get('/api/member-service/member/auth',{
+    headers: {
+        Authorization: `Bearer ${token}`
+    }
+  }).then((res) => {
+    console.log(res)
+    if(res.data.memberId == null){
+      router.push('/')
+    }else{
+      currentMemberName.value = res.data.memberName
+      currentMemberNum.value = res.data.memberNum
+    }
+  })
+
   postId.value = route.params.id
   if (!postId.value) {
     error.value = '게시글 ID가 주소에 포함되지 않았습니다.'
@@ -326,10 +367,10 @@ const togglePostReaction = async (reactionType) => {
   if (postReaction.isLiking || postReaction.isCheering) return;
   const isLikeAction = reactionType === 'good';
   if (isLikeAction) postReaction.isLiking = true; else postReaction.isCheering = true;
-  const payload = { memberNum: currentMemberNum.value, postCategoryNum: FASHION_POST_CATEGORY, reactionType };
+  const payload = { postNum: postId.value, postCategoryNum: FASHION_POST_CATEGORY, memberNum: currentMemberNum.value, reactionType };
   try {
     // [수정] API 경로 수정 (백엔드 컨트롤러 확인 필요)
-    await axios.post(`/api/manager-service/posts/fashion/react`, payload, { params: { postNum: postId.value } });
+    await axios.post(`/api/manager-service/posts/fashion/react/${postId.value}`, payload, { headers: { 'Content-Type': 'application/json' } });
     if (isLikeAction) {
       const wasLiked = postReaction.isLiked;
       postReaction.isLiked = !wasLiked;
@@ -383,13 +424,21 @@ const handleCommentSubmit = async () => {
 const editPost = () => {
   // 패션 게시판 수정 라우터 이름 확인 필요 (라우터에 'editfashionpost'로 추가 가정)
   // router.push({ name: 'editfashionpost', params: { id: postId.value } });
-  alert('패션 게시글 수정 기능 구현 필요 (라우터 설정 확인)');
+  if (!isAuthor.value) {
+    alert('작성자만 수정할 수 있습니다.');
+    return;
+  }
+  router.push({
+    name: 'modifyfashionpostview',
+    params: { postNum: String(postId.value) },
+    state: { post: postData.value }   // 가능하면 기존 데이터도 같이 전달(빠른 프리필)
+  });
 };
 
 const deletePost = async () => {
   if (confirm('정말로 이 게시글을 삭제하시겠습니까?')) {
     try {
-      await axios.delete(`/api/manager-service/posts/fashion/delete`, { params: { postNum: postId.value } });
+      await axios.delete(`/api/manager-service/posts/fashion/${postId.value}`, { params: {postNum: postId.value} });
       alert('게시글이 삭제되었습니다.');
       router.push({ name: 'fashionboardview' });
     } catch (err) { console.error("게시글 삭제 에러:", err); alert('게시글 삭제 실패'); }
@@ -426,8 +475,8 @@ const categories = ref(['전체', '코디 조언', '스타일링', '쇼핑 동�
 // DB 데이터(member_num) 기반으로 num 추가
 const popularMentors = ref([
   { num: 2, name: '김패션', field: '코디 멘토링', likes: 234 }, // member_num: 2
-  { num: null, name: '배민', field: '브랜딩', likes: 189 }, // DB에 '배민' 없음
-  { num: 31, name: '트렌드분석이', field: '트렌드 분석', likes: 156 } // '트렌드세터이' (member_num: 31)로 가정
+  { num: 3, name: '박스타일', field: '브랜딩', likes: 189 }, // DB에 '배민' 없음
+  { num: 4, name: '이민준', field: '트렌드 분석', likes: 156 } // '트렌드세터이' (member_num: 31)로 가정
 ]);
 // ▲▲▲▲▲ popularMentors 데이터 수정 ▲▲▲▲▲
 </script>
@@ -477,6 +526,43 @@ const popularMentors = ref([
   --cheer-color: #1976D2;
   --cheer-bg: #e3f2fd;
   --cheer-border: #bbdefb;
+}
+/* 게시글 신고/삭제 버튼 */
+.report-button, .delete-button {
+  display: inline-flex;
+  padding: 4px 10px;
+  font-size: 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-top: 16px;
+  font-weight: 500;
+  margin-left: 8px; /* 버튼 간 간격 */
+}
+.report-button {
+  background: #fff0f0;
+  color: #d4183d;
+  border: 1px solid #ffcccc;
+}
+.delete-button {
+  background: #f3f4f6;
+  color: #4b5563;
+  border: 1px solid #e5e7eb;
+}
+
+.report-button:hover { background: #ffe0e0; }
+.delete-button:hover { background: #e5e7eb; }
+
+
+/* 댓글 신고/삭제 버튼 */
+.comment-edit-actions button {
+  font-size: 12px; /* 크기 살짝 줄임 */
+  padding: 3px 6px;
+}
+.comment-edit-actions button:first-child { /* 신고 버튼 */
+  color: #d4183d;
+}
+.comment-edit-actions button:first-child:hover {
+  background-color: #fff0f0;
 }
 
 #fashion-community-page {

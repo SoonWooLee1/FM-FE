@@ -24,7 +24,6 @@
             </div>
             <div class="post-edit-actions" v-if="postData.author_num === currentMemberNum">
               <button @click="editPost">수정</button>
-              <button @click="deletePost">삭제</button>
             </div>
           </div>
 
@@ -36,7 +35,7 @@
             <img :src="'/images/mentoringpost' + postId + '.jpg'" alt="Mentoring default image" class="post-image" @error="($event) => ($event.target.src = '/images/defaultimage.png')" />
             <div class="post-content-text" v-html="postData.content || '내용 없음'"></div>
             <button class="report-button post-report-button" @click="reportPost(postId)">🚨 게시글 신고</button>
-            <button v-if="postData.author_num === currentMemberNum" class="delete-button post-delete-button" @click="deletePost">🗑️ 게시글 삭제</button>
+            <button class="delete-button post-delete-button">🗑️ 게시글 삭제</button>
           </div>
 
           <div class="post-meta">
@@ -59,13 +58,13 @@
                 </div>
                 <div class="comment-edit-actions">
                   <button @click="reportComment(comment.num)">🚨 신고</button>
-                  <button v-if="comment.member_num === currentMemberNum" @click="deleteComment(comment.num)">🗑️ 삭제</button>
+                  <button>🗑️ 삭제</button>
                 </div>
               </li>
             </ul>
             <p v-else>아직 댓글이 없습니다.</p>
             <form class="comment-form" @submit.prevent="handleCommentSubmit">
-              <div class="avatar comment-avatar">{{ currentMemberName?.charAt(0) || '나'}}</div>
+              <div class="avatar comment-avatar">{{ currentMemberName?.charAt(0) || '?'}}</div>
               <input type="text" placeholder="댓글을 입력해주세요" class="comment-input" v-model="newCommentText" />
               <button type="submit" class="comment-submit-button">등록</button>
             </form>
@@ -77,34 +76,29 @@
       </div>
 
       <aside class="sidebar-column">
-         <div class="widget category-widget">
-          <h3>카테고리</h3>
-          <div class="category-list">
-            <button v-if="categoriesLoading">로딩중...</button>
-             <template v-else-if="categories.length > 0">
-               <button v-for="category in categories" :key="category.num">
-                 {{ category.NAME }}
-               </button>
-             </template>
-             <button v-else disabled>카테고리 없음</button>
-          </div>
-        </div>
+       <div class="widget category-widget">
+         <h3>카테고리</h3>
+         <div class="category-list">
+           <button>#겨울코디</button>
+           <button>#OOTD</button>
+           <button>#데일리룩</button>
+         </div>
+       </div>
         <div class="widget mentors-widget">
           <h3><span class="icon">🏆</span> 인기 멘토</h3>
           <ul class="mentor-list">
-             <li v-if="popularMentorsLoading">로딩 중...</li>
-             <template v-else-if="popularMentors.length > 0">
-                <li v-for="mentor in popularMentors" :key="mentor.num" @click="goToMentorPage(mentor.num)" :style="{ cursor: mentor.num ? 'pointer' : 'default' }">
-                  <div class="mentor-info">
-                    <strong>{{ mentor.name }}</strong>
-                    <span>{{ mentor.field }}</span>
-                  </div>
-                  <div class="mentor-likes">
-                    <span class="icon">⭐</span> {{ mentor.likes }}
-                  </div>
-                </li>
-             </template>
-             <li v-else>인기 멘토 없음</li>
+            <template v-if="popularMentors.length > 0">
+              <li v-for="mentor in popularMentors" :key="mentor.num" @click="goToMentorPage(mentor.num)" :style="{ cursor: mentor.num ? 'pointer' : 'default' }">
+                <div class="mentor-info">
+                  <strong>{{ mentor.name }}</strong>
+                  <span>{{ mentor.field }}</span>
+                </div>
+                <div class="mentor-likes">
+                  <span class="icon">⭐</span> {{ mentor.likes }}
+                </div>
+              </li>
+            </template>
+            <li v-else>인기 멘토 없음</li>
           </ul>
         </div>
         <div class="widget cta-widget">
@@ -132,10 +126,10 @@ const router = useRouter();
 const jsonServerApi = axios.create({
   baseURL: 'http://localhost:3000',
 });
-// Spring API용 (인증 필요 시) - 댓글 생성 시 사용
+// Spring API용 (인증 필요 시)
 const api = axios.create({
   baseURL: '/api',
-   withCredentials: true,
+  withCredentials: true,
 });
 api.interceptors.request.use((config) => {
   const token = sessionStorage.getItem('token')
@@ -150,7 +144,7 @@ api.interceptors.response.use(
   (err) => {
     if (err?.response?.status === 401) {
       alert('세션이 만료되었거나 권한이 없습니다. 다시 로그인해 주세요.')
-      router.push('/') // 로그인 페이지로 리다이렉트
+      router.push('/')
     }
     return Promise.reject(err)
   }
@@ -163,145 +157,153 @@ const isLoading = ref(true);
 const error = ref(null);
 
 const newCommentText = ref('');
-const postId = ref(null);
+const postId = ref(null); // 템플릿에서 사용
 const fallbackImage = '/images/default_avatar.png';
 
 // --- 현재 로그인 사용자 정보 ---
-// 실제 구현 시 API 호출 또는 상태 관리 라이브러리 사용
-const currentMemberNum = ref(4); // 예: user01 (이민준) - 본인 확인용
-const currentMemberName = ref('이민준'); // 댓글 작성 시 표시될 이름
+const currentMemberNum = ref(null);
+const currentMemberName = ref(null);
 // ----------------------------
 
 // --- 사이드바 데이터 ---
-const categories = ref([]);
+// 카테고리 하드코딩
+const categories = ref([
+    { num: 1, NAME: '#겨울코디' },
+    { num: 2, NAME: '#OOTD' },
+    { num: 5, NAME: '#데일리룩' }
+]);
 const categoriesLoading = ref(false);
-const popularMentors = ref([]); // { num, name, field, likes }
+
+// 인기 멘토 하드코딩
+const popularMentors = ref([
+    { num: 2, name: '김패션', field: '전문 멘토', likes: 1520 },
+    { num: 3, name: '배민', field: '전문 멘토', likes: 2800 },
+    { num: 14, name: '오은호', field: '전문 멘토', likes: 75 }
+]);
 const popularMentorsLoading = ref(false);
 // -----------------------
 
 
 onMounted(async () => {
-  postId.value = route.params.id;
+  // --- 사용자 인증 정보 가져오기 ---
+  const token = sessionStorage.getItem('token');
+  if (!token) {
+    alert('로그인이 필요합니다.');
+    router.push('/');
+    return;
+  }
+
+  try {
+    const authRes = await axios.get('/api/member-service/member/auth', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    console.log('Auth response:', authRes.data);
+    if (authRes.data.memberNum == null && authRes.data.num == null) {
+      alert('사용자 정보를 가져올 수 없습니다. 다시 로그인해주세요.');
+      router.push('/');
+      return;
+    } else {
+      currentMemberName.value = authRes.data.memberName || authRes.data.name || authRes.data.memberId;
+      currentMemberNum.value = authRes.data.memberNum || authRes.data.num;
+      console.log('Logged in user:', currentMemberNum.value, currentMemberName.value);
+    }
+  } catch (authErr) {
+    console.error('인증 정보 조회 실패:', authErr);
+    alert('사용자 정보를 가져오는 중 오류가 발생했습니다.');
+    router.push('/');
+    return;
+  }
+  // -----------------------------
+
+  // --- 게시글 ID 처리 (URL 파라미터 무시하고 1로 고정) ---
+  // const idFromRoute = route.params.id; // URL의 :id를 읽는 대신
+  postId.value = 1; // 무조건 1로 강제 고정
+  // --------------------
+
   if (!postId.value) {
-    error.value = "게시글 ID가 주소에 포함되지 않았습니다.";
+    // 이 코드는 postId.value = 1 로 인해 실행될 일 없지만 방어용으로 둠
+    error.value = "유효하지 않은 게시글 ID입니다.";
     isLoading.value = false;
     return;
   }
-  await Promise.all([
-      fetchPostAndComments(),
-      fetchCategories(),
-      fetchPopularMentors()
-  ]);
+
+  // --- 데이터 로딩 ---
+  await fetchPostAndComments();
+  // ----------------------
 });
 
-// 카테고리(해시태그) 로딩 함수 (db.json Hash_Tag 테이블 사용, 상위 3개)
-const fetchCategories = async () => {
-  categoriesLoading.value = true;
-  try {
-    const response = await jsonServerApi.get('/Hash_Tag', {
-        params: { _limit: 3 } // 상위 3개만 가져옴
-    });
-    categories.value = Array.isArray(response.data) ? response.data : [];
-  } catch (e) {
-    console.error('카테고리(해시태그) 조회 실패:', e);
-    categories.value = [];
-  } finally {
-    categoriesLoading.value = false;
-  }
-};
-
-// 인기 멘토 로딩 함수 (db.json Influencer_Page 테이블 num 2, 3, 4 사용)
-const fetchPopularMentors = async () => {
-   popularMentorsLoading.value = true;
-   try {
-     // Influencer_Page에서 num 2, 3, 4 인 데이터 조회
-     const params = new URLSearchParams();
-     params.append('num', 2);
-     params.append('num', 3);
-     params.append('num', 4);
-
-     const response = await jsonServerApi.get(`/Influencer_Page?${params.toString()}`);
-     const influencerPages = Array.isArray(response.data) ? response.data : [];
-
-     // 각 Influencer_Page 데이터에 해당하는 Member 정보 조회 (good_count 가져오기 위해)
-     const mentorDetails = await Promise.all(
-       influencerPages.map(async (page) => {
-         let memberInfo = {};
-         try {
-           const memberRes = await jsonServerApi.get(`/Member/${page.member_num}`);
-           memberInfo = memberRes.data || {};
-         } catch (memberErr) {
-           console.warn(`Member ${page.member_num} 정보 조회 실패:`, memberErr);
-         }
-         return {
-           num: page.member_num, // Member 번호 사용 (라우팅용)
-           name: memberInfo.NAME || '알 수 없음',
-           field: '전문 멘토', // 임시 필드
-           likes: memberInfo.good_count || 0 // 좋아요 수
-         };
-       })
-     );
-
-     popularMentors.value = mentorDetails;
-
-   } catch (e) {
-     console.error('인기 멘토 조회 실패:', e);
-     popularMentors.value = [];
-   } finally {
-     popularMentorsLoading.value = false;
-   }
-};
-
-// 게시글 및 댓글 데이터 로딩 함수 (db.json 연동)
+// 게시글 및 댓글 데이터 로딩 함수 (1번 게시물 및 관련 데이터만 로드)
+// 게시글 및 댓글 데이터 로딩 함수 (num=1인 게시물만 로드)
 const fetchPostAndComments = async () => {
   isLoading.value = true;
   error.value = null;
+
   try {
-    // 1. 게시글 정보 (json-server)
-    const postResponse = await jsonServerApi.get(`/Mentoring_Post/${postId.value}`);
-    let fetchedPost = postResponse.data;
-
-    // 2. 작성자 정보 (json-server)
-    if (fetchedPost && fetchedPost.author_num != null) {
-      try {
-        const memberResponse = await jsonServerApi.get(`/Member/${fetchedPost.author_num}`);
-        fetchedPost.memberName = memberResponse.data?.NAME || '작성자 정보 없음';
-      } catch (memberError) { fetchedPost.memberName = '정보 조회 실패'; }
-    } else { fetchedPost.memberName = '작성자 정보 없음'; }
-    postData.value = fetchedPost;
-
-
-    // 3. 댓글 정보 (json-server)
-    const commentsResponse = await jsonServerApi.get(`/Comment`, {
-      params: { mentoring_post_num: postId.value }
+    // 1️⃣ 게시글 정보 (json-server: /Mentoring_Post?num=1)
+    const postResponse = await jsonServerApi.get(`/Mentoring_Post`, {
+      params: { num: 1 }
     });
-    let fetchedComments = Array.isArray(commentsResponse.data) ? commentsResponse.data : [];
 
-    // 4. 댓글 작성자 정보 (json-server)
-    if (fetchedComments.length > 0) {
-       const commentAuthorNums = [...new Set(fetchedComments.map(c => c.member_num).filter(Boolean))];
-       if (commentAuthorNums.length > 0) {
-         const commentMemberParams = new URLSearchParams();
-         commentAuthorNums.forEach(num => commentMemberParams.append('num', num));
-          try {
-             const commentMemberResponse = await jsonServerApi.get(`/Member?${commentMemberParams.toString()}`);
-             const commentMemberMap = new Map((Array.isArray(commentMemberResponse.data) ? commentMemberResponse.data : []).map(m => [m.num, m.NAME]));
-             fetchedComments = fetchedComments.map(c => ({ ...c, memberName: commentMemberMap.get(c.member_num) || '알 수 없음' }));
-          } catch (commentMemberError) {
-             fetchedComments = fetchedComments.map(c => ({ ...c, memberName: '정보 조회 실패' }));
-          }
-       } else {
-          fetchedComments = fetchedComments.map(c => ({ ...c, memberName: '작성자 정보 없음' }));
-       }
+    // json-server는 배열로 반환 → 첫 번째 게시글만 사용
+    const fetchedPost = Array.isArray(postResponse.data) ? postResponse.data[0] : null;
+
+    if (!fetchedPost) {
+      throw new Error('num=1인 게시글을 찾을 수 없습니다.');
     }
-    commentData.value = fetchedComments;
 
+    // 2️⃣ 작성자 정보
+    const authorNum = fetchedPost.author_num;
+    let authorName = '작성자 정보 없음';
+    if (authorNum) {
+      try {
+        const authorResponse = await jsonServerApi.get(`/Member`, {
+          params: { num: authorNum }
+        });
+        authorName = authorResponse.data[0]?.NAME || '정보 없음';
+      } catch (authorErr) {
+        console.error('게시글 작성자 정보 조회 실패:', authorErr);
+      }
+    }
+
+    postData.value = { ...fetchedPost, memberName: authorName };
+
+    // 3️⃣ 댓글 불러오기 (mentoring_post_num=1 기준)
+    const commentsResponse = await jsonServerApi.get(`/Comment`, {
+      params: { mentoring_post_num: 1 }
+    });
+
+    let fetchedComments = Array.isArray(commentsResponse.data)
+      ? commentsResponse.data
+      : [];
+
+    // 4️⃣ 댓글 작성자 이름 매핑
+    if (fetchedComments.length > 0) {
+      const memberNums = [...new Set(fetchedComments.map(c => c.member_num))];
+      if (memberNums.length > 0) {
+        const memberParams = new URLSearchParams();
+        memberNums.forEach(num => memberParams.append('num', num));
+        try {
+          const memberRes = await jsonServerApi.get(`/Member?${memberParams.toString()}`);
+          const memberMap = new Map(memberRes.data.map(m => [m.num, m.NAME]));
+          fetchedComments = fetchedComments.map(c => ({
+            ...c,
+            memberName: memberMap.get(c.member_num) || '정보 조회 실패'
+          }));
+        } catch (err) {
+          console.error('댓글 작성자 조회 실패:', err);
+        }
+      }
+    }
+
+    commentData.value = fetchedComments;
   } catch (err) {
-    console.error("데이터 로딩 에러:", err);
-    error.value = "게시글 정보를 불러오는 데 실패했습니다.";
-    if (err.response?.status === 404) error.value = "해당 게시글을 찾을 수 없습니다.";
-  } finally { isLoading.value = false; }
+    console.error('데이터 로딩 에러:', err);
+    error.value = err.message || '데이터를 불러오는 데 실패했습니다.';
+  } finally {
+    isLoading.value = false;
+  }
 };
+
 
 // 댓글 작성 (json-server API)
 const handleCommentSubmit = async () => {
@@ -310,18 +312,17 @@ const handleCommentSubmit = async () => {
 
   try {
     const payload = {
-        content: newCommentText.value.trim(),
-        member_num: currentMemberNum.value,
-        mentoring_post_num: Number(postId.value)
+      content: newCommentText.value.trim(),
+      member_num: currentMemberNum.value,
+      mentoring_post_num: Number(postId.value) // postId.value는 1
     };
     const response = await jsonServerApi.post(`/Comment`, payload);
 
-    // 성공 시 새 댓글 정보 포함하여 로컬 목록 업데이트
     const newCommentData = {
-        ...response.data,
-        memberName: currentMemberName.value, // 현재 사용자 이름 사용
-        userReaction: null,
-        isReacting: false
+      ...response.data,
+      memberName: currentMemberName.value, // 현재 로그인 사용자 이름 사용
+      userReaction: null,
+      isReacting: false
     };
     commentData.value.push(newCommentData);
     newCommentText.value = '';
@@ -336,54 +337,31 @@ const editPost = () => {
   // router.push({ name: 'editMentoringPost', params: { id: postId.value } });
 };
 
-// 게시글 삭제 (json-server API)
-const deletePost = async () => {
-  if (!postData.value?.num) return;
-  if (confirm('정말로 이 게시글을 삭제하시겠습니까?')) {
-    try {
-      await jsonServerApi.delete(`/Mentoring_Post/${postData.value.num}`);
-      alert('게시글이 삭제되었습니다.');
-      router.push({ name: 'mentoringboardview' }); // 게시판으로 이동
-    } catch (err) { console.error("게시글 삭제 에러:", err); alert('게시글 삭제 실패'); }
-  }
+// 게시글 삭제 (기능 없음)
+const deletePost = () => {
+  alert('게시글 삭제 기능은 구현되지 않았습니다.');
 };
 
-// 댓글 삭제 (json-server API)
-const deleteComment = async (commentNum) => {
-  if (!commentNum) { console.error("삭제할 댓글 번호가 없습니다."); return; }
-  if (confirm('정말로 이 댓글을 삭제하시겠습니까?')) {
-    try {
-      await jsonServerApi.delete(`/Comment/${commentNum}`);
-      alert('댓글이 삭제되었습니다.');
-      commentData.value = commentData.value.filter(c => c.num !== commentNum);
-    } catch (err) {
-      console.error("댓글 삭제 에러:", err);
-      const status = err.response?.status;
-      if (status === 404) {
-        alert(`댓글 삭제 실패: 댓글(ID: ${commentNum})을 찾을 수 없습니다.`);
-      } else {
-        alert(`댓글 삭제 실패 (오류: ${status || 'Unknown'})`);
-      }
-    }
-  }
+// 댓글 삭제 (기능 없음)
+const deleteComment = (commentNum) => {
+    alert(`댓글(${commentNum}) 삭제 기능은 구현되지 않았습니다.`);
 };
 
 // 게시글 신고 페이지 이동
 const reportPost = (postNum) => {
   if (!postNum) return;
-  router.push({ name: 'reportMentoringPost', params: { num: postNum.toString() } });
+  alert(`게시글(${postNum}) 신고 라우터 미설정`);
 };
 
 // 댓글 신고 페이지 이동
 const reportComment = (commentNum) => {
   if (!commentNum) return;
-  router.push({ name: 'reportComment', params: { num: commentNum.toString() } });
+  alert(`댓글(${commentNum}) 신고 라우터 미설정`);
 };
 
 // 인플루언서 페이지 이동 (라우터 이름 사용)
 const goToMentorPage = (mentorNum) => {
   if (!mentorNum) return;
-  // router/index.js 에 정의된 이름 사용: 'influencerpage-profile'
   router.push({ name: 'influencerpage-profile', params: { num: mentorNum.toString() } });
 };
 
@@ -395,8 +373,6 @@ const goToApplyPage = () => {
 </script>
 
 <style scoped>
-/* 이전 스타일 유지... */
-
 /* 프로필 이미지 fallback 스타일 */
 .avatar {
   background-color: #eee; /* 기본 배경색 */
