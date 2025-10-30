@@ -63,6 +63,7 @@
     </div>
     </div>
 
+
   <!-- ✅ 모달 -->
   <div v-if="isModalOpen" class="modal-overlay" @click.self="closeModal">
     <div class="modal-box">
@@ -667,6 +668,10 @@ const reject = () => {
 
 .approve-btn {
     background-color: #01cb52;
+}
+
+.reject-btn {
+    background-color: #e43c04;
 }
 
 .reject-btn {

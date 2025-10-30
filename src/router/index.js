@@ -1,7 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import LoginView from '../components/management/LoginView.vue';
 import MainView from '../components/MainView.vue';
-import RegisterMemberView from '../components/management/RegisterMemberView.vue';
 import FindIdView from '../components/management/FindIdView.vue';
 import FindPasswordView from '../components/management/FindPasswordView.vue';
 import AdminLoginView from '../components/management/AdminLoginView.vue';
@@ -21,8 +19,11 @@ import RegistFashionPostView from '../components/post/fashion/RegistFashionPostV
 // influencerPage
 import InfluencerPageView from '../components/influencer/01_Page/InfluencerPageView.vue';  // 인플루언서 리스트 페이지
 import InfluencerProfileView from '../components/influencer/01_Page/InfluencerProfileView.vue';  // 인플루언서 상세 페이지
-import InfluencerApplyView from '../components/influencer/01_Page/InfluencerApplyView.vue'; // 인플루언서 신청 페이지
-import MenteeApplyView from '../components/influencer/01_Page/MenteeApplyView.vue'; // 멘토링 신청 페이지
+// import InfluencerApplyView from '../components/influencer/01_Page/InfluencerApplyView.vue'; // 인플루언서 신청 페이지
+// import MenteeApplyView from '../components/influencer/01_Page/MenteeApplyView.vue'; // 멘토링 신청 페이지
+// import InfluencerRegistPageView from '../components/influencer/01_Page/InfluencerRegistPageView.vue';
+// import InfluencerPageEditView from '../components/influencer/01_Page/InfluencerPageEditView.vue';
+
 
 // Placeholders/Imports from features branch (Uncomment and complete as needed)
 // import FashionPostView from '../components/FashionPostView.vue'; // Likely replaced by FashionBoardView or similar
@@ -42,6 +43,13 @@ import ReportCommentView from '../components/report/ReportCommentView.vue';
 import ModifyFashionPostView from '../components/post/fashion/ModifyFashionPostView.vue';
 
 
+// memmber page
+import LoginView from '../components/member/LoginView.vue';
+import MyPageView from '../components/member/MyPageView.vue';
+import MyPageViewRegist from '../components/member/MyPageViewRegist.vue';
+import RegisterMemberView from '../components/member/RegisterMemberView.vue';
+
+
 const routes = [
   { path: '/', name: 'login', component: LoginView },
   { path: '/main', name: 'main', component: MainView },
@@ -50,6 +58,21 @@ const routes = [
   { path: '/findpassword', name: 'findpassword', component: FindPasswordView },
   { path: '/adminlogin', name: 'adminlogin', component: AdminLoginView },
   { path: '/changepassword', name: 'changepassword', component: ChangePasswordView }, // Corrected typo from features
+
+
+      {
+        path: '/mypage',
+        name: 'mypage',
+        component: MyPageView
+    },
+
+    {
+        path: '/regist',
+        name: 'regist',
+        component: MyPageViewRegist
+    },
+
+
 
   // Routes primarily from HEAD branch (more specific)
   {
@@ -95,27 +118,36 @@ const routes = [
     name: 'influencerpage-profile',
     component: InfluencerProfileView,
     props: true
-  }, { 
-    path: '/influencerapply',
-    name: 'influencerapply',
-    component: InfluencerApplyView,
-    props: true
-  }, { 
-    path: '/menteeapply',
-    name: 'menteeapply',
-    component: MenteeApplyView,
-    props: true
-  },
+  }, 
+//   { 
+//     path: '/influencerapply',
+//     name: 'influencerapply',
+//     component: InfluencerApplyView,
+//     props: true
+//   }, { 
+//     path: '/influencerregistpage',
+//     name: 'influencerregistpage',
+//     component: InfluencerRegistPageView,
+//     props: true
+//   }, {
+//   path: "/influencer/edit/:pageNum",
+//   name: "InfluencerPageEdit",
+//   component: InfluencerPageEditView,
+//   props: true,
+// },
+
+  // { 
+  //   path: '/menteeapply',
+  //   name: 'menteeapply',
+  //   component: MenteeApplyView,
+  //   props: true
+  // },
   
   
   {
     path: '/message',
     name: 'message',
     // component: MessageView // 실제 컴포넌트로 연결 필요
-  },{
-    path: '/mypage',
-    name: 'mypage',
-    // component: MyPageView // 실제 컴포넌트로 연결 필요
   },{
     path: '/fashionpost/:id',
     name: 'fashionpost',
